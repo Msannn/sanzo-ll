@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Register User</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="form-container">
+        <h2>Form Registrasi User</h2>
+        <form id="registerForm" enctype="multipart/form-data">
+            <label for="name">Nama Lengkap:</label>
+            <input type="text" id="name" name="name" required>
+            
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+            
+            <label for="whatsapp">WhatsApp (Nomor):</label>
+            <input type="tel" id="whatsapp" name="whatsapp" required placeholder="e.g. +6281234567890">
+            
+            <label for="profileImage">Gambar Profil:</label>
+            <input type="file" id="profileImage" name="profileImage" accept="image/jpeg, image/png" required>
+            
+            <button type="submit" id="registerButton" disabled>Daftar</button>
+        </form>
+
+        <p class="error" id="errorMessage"></p>
+        <p class="success" id="successMessage"></p>
+
+        <div class="image-container">
+            <img id="imagePreview" src="" alt="Image Preview" />
+            <canvas id="imageCanvas"></canvas>
+            <span id="faceStatus"></span>
+        </div>
+
+        <div class="status-container">
+            <span class="status-text" id="detectionStatus"></span>
+            <span class="percentage" id="matchPercentage"></span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+    <script>
+        let model;
+
+        // Memuat model BlazeFace dari TensorFlow.js
+        async function loadModel() {
+            model = await blazeface.load();
+        }
+
+        // Fungsi untuk memverifikasi apakah wajah terdeteksi pada gambar dan menggambar kotak
+        async function detectFace(image) {
+            const predictions = await model.estimateFaces(image, false);
+
+            const faceStatus = document.getElementById('faceStatus');
+            const registerButton = document.getElementById('registerButton');
+            const detectionStatus = document.getElementById('detectionStatus');
+            const matchPercentage = document.getElementById('matchPercentage');
+            const canvas = document.getElementById('imageCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Set ukuran canvas agar sesuai dengan gambar
+            canvas.width = image.width;
+            canvas.height = image.height;
+
+            // Bersihkan canvas sebelumnya
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (predictions.length > 0) {
+                // Wajah terdeteksi
+                registerButton.disabled = false;
+                faceStatus.textContent = 'Wajah terdeteksi, Anda siap mendaftar!';
+                faceStatus.style.color = 'green';
+                detectionStatus.textContent = 'Pencocokan wajah berhasil.';
+                detectionStatus.style.color = 'green';
+                matchPercentage.textContent = 'Kecocokan: 95%';
+                matchPercentage.style.color = '#4CAF50';
+                document.getElementById("errorMessage").textContent = '';
+
+                // Gambar kotak di sekitar wajah
+                predictions.forEach(prediction => {
+                    const start = prediction.topLeft;
+                    const end = prediction.bottomRight;
+                    const width = end[0] - start[0];
+                    const height = end[1] - start[1];
+
+                    ctx.strokeStyle = 'green'; // Warna garis kotak
+                    ctx.lineWidth = 3; // Ketebalan garis
+                    ctx.strokeRect(start[0], start[1], width, height); // Gambar kotak
+                });
+            } else {
+                // Tidak ada wajah terdeteksi
+                registerButton.disabled = true;
+                faceStatus.textContent = 'Muka tidak terdeteksi, silakan unggah gambar yang jelas!';
+                faceStatus.style.color = 'red';
+                detectionStatus.textContent = 'Pencocokan wajah gagal.';
+                detectionStatus.style.color = 'red';
+                matchPercentage.textContent = 'Kecocokan: 0%';
+                matchPercentage.style.color = '#F44336';
+                document.getElementById("errorMessage").textContent = "Muka tidak terdeteksi, silahkan pakai gambar JPG lainnya!";
+            }
+        }
+
+        // Menangani perubahan gambar yang diupload
+        document.getElementById('profileImage').addEventListener('change', async function(event) {
+            const file = event.target.files[0];
+
+            if (file && file.type.startsWith('image/')) {
+                const img = new Image();
+                img.src = URL.createObjectURL(file);
+                
+                img.onload = async function() {
+                    // Menampilkan preview gambar
+                    document.getElementById('imagePreview').src = img.src;
+
+                    // Deteksi wajah pada gambar
+                    await detectFace(img);
+                };
+            }
+        });
+
+        // Event listener untuk form submit
+        document.getElementById("registerForm").addEventListener("submit", function(event) {
+            event.preventDefault(); // Mencegah form disubmit jika ada kesalahan
+
+            const name = document.getElementById("name").value;
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+            const whatsapp = document.getElementById("whatsapp").value;
+            const profileImage = document.getElementById("profileImage").files[0];
+            const errorMessage = document.getElementById("errorMessage");
+            const successMessage = document.getElementById("successMessage");
+
+            // Mengosongkan pesan error sebelumnya
+            errorMessage.textContent = '';
+            successMessage.textContent = '';
+
+            // Simulasi proses pengiriman form (Anda bisa menggantinya dengan API atau backend)
+            successMessage.textContent = "Form berhasil dikirim!"; // Contoh jika validasi berhasil
+
+            // Reset form setelah submit
+            document.getElementById("registerForm").reset();
+            document.getElementById('imagePreview').src = ''; // Reset gambar
+            document.getElementById("registerButton").disabled = true;
+            document.getElementById('detectionStatus').textContent = ''; // Reset status wajah
+            document.getElementById('matchPercentage').textContent = ''; // Reset persen kecocokan
+        });
+
+        // Memuat model ketika halaman dimuat
+        loadModel();
+    </script>
+</body>
+</html>
